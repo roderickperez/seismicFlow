@@ -1,0 +1,22 @@
+# Data & Large Files
+seismicData/
+*.segy
+*.sgy
+*.npy
+*.npz
+
+# Python & Environment
+__pycache__/
+*.pyc
+.venv/
+.env
+.uv/
+
+# Local/Agent artifacts
+.gemini/
+figures/
+output/
+
+# OS specific
+.DS_Store
+Thumbs.db
