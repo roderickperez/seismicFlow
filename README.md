@@ -38,7 +38,12 @@ The project requires Python 3.12 and several scientific libraries.
     ```bash
     uv sync
     ```
-3.  **Verify GPU access**:
+3.  **Activate the environment**:
+    To activate the virtual environment created by `uv`, run:
+    ```bash
+    source .venv/bin/activate
+    ```
+4.  **Verify GPU access**:
     ```bash
     uv run python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
     ```
