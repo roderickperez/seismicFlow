@@ -364,9 +364,15 @@ def extract_surfaces_gpu(seismic_slice, vector_array, sample_intervals, mode='pe
         all_seed_x, all_seed_y = [], []
         for x in seeds_x:
             trace = seismic_slice[:, x]
-            if mode == 'peak': peaks, _ = scipy.signal.find_peaks(trace, **kwargs)
-            elif mode == 'trough': peaks, _ = scipy.signal.find_peaks(-trace, **kwargs)
-            else: peaks, _ = scipy.signal.find_peaks(np.abs(trace), **kwargs)
+            # Ensure trace is numpy for scipy.signal.find_peaks
+            if hasattr(trace, 'get'):
+                trace_cpu = trace.get()
+            else:
+                trace_cpu = trace
+                
+            if mode == 'peak': peaks, _ = scipy.signal.find_peaks(trace_cpu, **kwargs)
+            elif mode == 'trough': peaks, _ = scipy.signal.find_peaks(-trace_cpu, **kwargs)
+            else: peaks, _ = scipy.signal.find_peaks(np.abs(trace_cpu), **kwargs)
             for p in peaks:
                 all_seed_x.append(x)
                 all_seed_y.append(p)
@@ -407,7 +413,14 @@ def sort_tops(seismic_slice, surfaces, clusterer):
     x = np.arange(seismic_slice.shape[1])
     boundary_base = np.stack((np.ones(seismic_slice.shape[1]) * (seismic_slice.shape[0] - 1), x)).T
     boundary_top = np.stack((np.zeros(seismic_slice.shape[1]), x)).T
-    label_boundaries = {label: [np.inf, -np.inf, 0, 0] for label in np.unique(clusterer.labels_)}
+    
+    # cuML compatibility: ensure labels are numpy for dictionary keys
+    labels = clusterer.labels_
+    if hasattr(labels, 'get'):
+        labels = labels.get()
+    
+    unique_labels = np.unique(labels)
+    label_boundaries = {int(label): [np.inf, -np.inf, 0, 0] for label in unique_labels}
     for surface in surfaces:
         mean_depth = surface.path[:,0].mean()
         if mean_depth < label_boundaries[surface.kmeans_label][0]:

@@ -69,7 +69,38 @@ The following table maps the mathematical steps from the paper to the specific i
 - `requirements.txt`: List of required Python packages.
 - `pyproject.toml`: `uv` project configuration.
 
-## Requirements
+## Performance Analysis & Bottlenecks
+
+This project leverages GPU acceleration (CuPy) to handle the heavy computational load of seismic attribute analysis. Below is a breakdown of the performance characteristics for each workflow.
+
+### 1. Structure Tensor (ST) Computation
+*   **2D / 2.5D**: Calculations involve a $2 \times 2$ gradient matrix per pixel. This is extremely fast on GPU as it relies on simple 2D convolutions and element-wise math.
+*   **3D**: Calculations involve a $3 \times 3$ matrix per voxel (6 unique components). 
+    *   **The Hard Part**: 3D ST requires **3D Gaussian Convolutions**, which are computationally much heavier than 2D ($O(N^3)$ vs $O(N^2)$).
+    *   **The Bottleneck**: The Eigen-decomposition of millions of $3 \times 3$ matrices requires a robust numerical solver (`cp.linalg.eigh`). To prevent GPU solver crashes on large volumes, the code uses **batched processing** (1M samples per batch), which adds management overhead but ensures stability.
+
+### 2. Pseudo-3D Flowline Generation (RK4)
+*   **Mechanism**: The 3D script iterates through inlines and performs 2D RK4 tracing on each slice using the vectors projected from the 3D field.
+*   **The Primary Bottleneck**: 
+    1.  **Python Loop Overhead**: Iterating over hundreds of slices in Python introduces significant latency compared to a single monolithic GPU kernel.
+    2.  **Kernel Launch Latency**: For every slice, multiple GPU kernels (vectorization, normalization, RK4 steps) are launched. The accumulation of these overheads is the primary reason large 3D volumes (e.g., >200 inlines) take 20+ minutes.
+    3.  **CPU-Bound K-Means**: The segmentation step (K-Means) runs on the **CPU** using SciKit-Learn for every slice. This serial operation prevents the GPU from being fully utilized throughout the loop.
+
+### 3. I/O and Memory
+*   **Memory**: The 3D workflow loads the entire sub-volume into a 3D NumPy array. For massive volumes, this can lead to memory exhaustion or swapping.
+*   **I/O**: SEGY writing is sequential. Exporting 4 technical volumes for a large 3D block involves significant disk I/O, which is a fixed hardware bottleneck.
+
+### Summary of Computational Cost
+| Operation | Complexity | Device | Note |
+| :--- | :--- | :--- | :--- |
+| **3D Structure Tensor** | High | GPU | $O(N^3)$ 3D Convolutions |
+| **3D Eigen-Decomp** | High | GPU | Numerical solver, batched |
+| **RK4 Tracing** | Medium | GPU | Limited by step-by-step iteration |
+| **K-Means Seg** | Medium | **CPU** | **Major sequential bottleneck** |
+
+---
+
+## 🛠️ Requirements & Installation
 
 The project requires Python 3.12 and several scientific libraries. 
 - **Core**: `numpy`, `scipy`, `matplotlib`, `shapely`, `scikit-learn`, `structure-tensor`
