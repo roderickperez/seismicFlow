@@ -1,9 +1,12 @@
+import os
 import numpy as np
 from structure_tensor import eig_special_2d, structure_tensor_2d
 import matplotlib.pyplot as plt
 
 import shapely
 from flow_utils import *
+
+print_banner()
 
 
 
@@ -49,4 +52,8 @@ ax.imshow(seismic_line,cmap='gray', extent=[0, seismic_line.shape[1], seismic_li
 for surface in surfaces:
     color = 'k'
     ax.plot(surface.path[:,1], surface.path[:,0], linewidth=1, color = color , alpha = .5)
+# Create output directory if it doesn't exist
+os.makedirs('output', exist_ok=True)
+plt.savefig('output/extracted_surfaces.png')
+print(f"Result saved to output/extracted_surfaces.png")
 plt.show()

@@ -1,18 +1,15 @@
+import os
 import numpy as np
 from structure_tensor import eig_special_2d, structure_tensor_2d
-
-
 
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 
-
 from flow_utils import *
 
-
-
+print_banner()
 
 def surface_to_feature_vector(surfaces, max_size=None, only_y=False):
     # create a feature vector from the x,y coordinates of the surfaces
@@ -38,7 +35,6 @@ def surface_to_feature_vector(surfaces, max_size=None, only_y=False):
     return feature_vectors, max_size
 
 def sort_tops(seismic_slice, surfaces, clusterer):
-
     x = np.arange(seismic_slice.shape[1])
     y = np.ones(seismic_slice.shape[1]) * (seismic_slice.shape[0] - 1)
     boundary_base = np.stack((y,x)).T
@@ -50,7 +46,6 @@ def sort_tops(seismic_slice, surfaces, clusterer):
     for label in unique_labels:
         label_boundaries[label] = [np.inf, -np.inf, 0, 0]
 
-
     for surface in surfaces:
         mean_depth = surface.path[:,0].mean()
         if mean_depth < label_boundaries[surface.kmeans_label][0]:
@@ -61,11 +56,8 @@ def sort_tops(seismic_slice, surfaces, clusterer):
             label_boundaries[surface.kmeans_label][1] = mean_depth
             label_boundaries[surface.kmeans_label][3] = surface.path
 
-
-
     mean_depth_tops = []
     tops = []
-
 
     for key,values in label_boundaries.items():
         mean_depth_top, mean_depth_base, top, base = values
@@ -77,8 +69,6 @@ def sort_tops(seismic_slice, surfaces, clusterer):
 
     tops.append(boundary_base)
     mean_depth_tops.append(seismic_slice.shape[0])
-
-
 
     sort_inds = np.argsort(mean_depth_tops)
     sorted_tops = [tops[ind] for ind in sort_inds]
@@ -207,8 +197,10 @@ num_clusters = 10
 segmentation_map = segment_flowlines(seismic_line,
                                 sample_interval_x=sample_interval_x, mode=mode, only_y=only_y, num_clusters=num_clusters)
 
-"""
+# Create output directory if it doesn't exist
+os.makedirs('output', exist_ok=True)
 fig,ax = plt.subplots(1,1,dpi=250)
 ax.imshow(segmentation_map,cmap='jet')
+plt.savefig('output/segmentation_map.png')
+print(f"Result saved to output/segmentation_map.png")
 plt.show()
-"""

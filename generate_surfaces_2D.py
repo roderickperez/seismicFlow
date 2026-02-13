@@ -1,9 +1,12 @@
+import os
 import numpy as np
 from structure_tensor import eig_special_2d, structure_tensor_2d
 import matplotlib.pyplot as plt
 
 import shapely
 from flow_utils import *
+
+print_banner()
 
 
 
@@ -156,7 +159,10 @@ for surface in surfaces:
 plt.show()
 
 
-fig,ax = plt.subplots(1,1,figsize=(20,20))
+# Create output directory if it doesn't exist
+os.makedirs('output', exist_ok=True)
 ax.imshow(surface_array,cmap='gray', extent=[0, seismic_line.shape[1], seismic_line.shape[0], 0])
+plt.savefig('output/generated_surfaces.png')
+print(f"Result saved to output/generated_surfaces.png")
 plt.show()
 """
