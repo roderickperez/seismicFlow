@@ -44,6 +44,21 @@ Based on "Exploring seismic data in the flowline domain" (Adelved et al., The Le
    - The smallest eigenvector points in the direction of the reflection plane's dip.
    - RK4 becomes 3-dimensional ($dx, dy, dz$), propagating a "front" of points to define a 2D surface manifold.
 
+## Code-to-Theory Mapping
+
+The following table maps the mathematical steps from the paper to the specific implementations in this repository:
+
+| Methodology Step (Paper) | Implementation File | Key Functions/Logic |
+| :--- | :--- | :--- |
+| **1. Structure Tensor** | `extract_surfaces.py` | `structure_tensor_2d`, `eig_special_2d` (Lines 25-26) |
+| **2. RK4 Integration** | `flow_utils.py` | `runge_kutta_4` (Lines 58-91) |
+| **3. Flowline Extraction** | `flow_utils.py` | `extract_surfaces` (Lines 94-181) |
+| **4. Unconformity Heatmap** | `generate_surfaces_2D.py`| `create_heatmap` (Lines 58-76) |
+| **5. Overlap Pruning** | `generate_surfaces_2D.py`| `prune_overlapping_surfaces` (Lines 35-53) |
+| **6. K-Means Clustering** | `segment_flowlines.py` | `segment_flowlines`, `KMeans` (Lines 111-174) |
+
+---
+
 ## Folder Structure
 
 - `F3_2Dline.npy`: Sample 2D seismic data in NumPy format.
@@ -114,30 +129,53 @@ To ensure maximum performance on your NVIDIA A5000, we use:
 - **PyTorch**: For future deep learning or tensor operations.
 - **CuPy**: For high-speed structure tensor calculations.
 
-### Maintenance & Updates
+## Clear Step-By-Step Execution Guide
 
-- **Activate Environment**: `source .venv/bin/activate`
-- **Sync/Install All**: `uv sync`
-- **Install New Library**: `uv add <library-name>`
-- **Upgrade All Libraries**: `uv lock --upgrade && uv sync`
-- **Update Specific Library**: `uv add <library-name> --upgrade`
+Follow these steps to run the full seismic flowline processing pipeline.
 
-> [!NOTE]
-> **Visualization in Non-Interactive Environments**: The scripts are configured to automatically save results as `.png` images in the `output/` directory. This is useful for users running the code via SSH or WSL without a GUI.
-> - **Horizon Extraction**: `output/extracted_surfaces.png`
-> - **Surface Generation**: `output/generated_surfaces.png`
-> - **Segmentation Map**: `output/segmentation_map.png`
+### Step 1: Environment Activation
+Always start by activating your `uv` environment:
+```bash
+source .venv/bin/activate
+```
 
-## Detailed Instructions to Make it Work
+### Step 2: Prepare Your Data
+- Ensure your seismic data is in `.npy` format.
+- The default dataset `F3_2Dline.npy` is already in the root directory.
+- To use your own data, place it in the root and update the `seispath` variable in the scripts.
 
-1.  **Prepare Data**: Ensure you have a `.npy` file named `F3_2Dline.npy` (provided in the repo).
-2.  **Activate Environment**: 
-    ```bash
-    source .venv/bin/activate
-    ```
-3.  **Execute**: Run any of the main scripts using `uv run python <script_name>.py`.
-4.  **View Results**: Locate the generated images in the `output/` folder and open them using your preferred image viewer.
+### Step 3: Run the Processing Pipeline
+
+#### **A. Basic Horizon Extraction (RK4 Integration)**
+Run this script to calculate the structure tensor and trace horizons using the Runge-Kutta 4th order method.
+```bash
+uv run python extract_surfaces.py
+```
+*   **Result**: Generates `output/extracted_surfaces.png` showing the traced horizons on the seismic section.
+
+#### **B. Full Segmentation & Clustering (K-Means)**
+Run this to group horizons into stratigraphic layers and identify major unconformities based on flowline convergence.
+```bash
+uv run python segment_flowlines.py
+```
+*   **Result**: Generates `output/segmentation_map.png` showing the segmented stratigraphic sequences.
+
+#### **C. Advanced Generation & Pruning**
+Use this for high-quality surface generation with overlap-based pruning.
+```bash
+uv run python generate_surfaces_2D.py
+```
+*   **Result**: Generates `output/generated_surfaces.png`.
+
+---
+
+## Technical Maintenance
+
+- **Update Dependencies**: `uv sync`
+- **Add New Package**: `uv add <package>`
+- **Upgrade All Packages**: `uv lock --upgrade && uv sync`
 
 ## Credits
 
-This project is based on the work by **Adelved** in the original [seismic-flow](https://github.com/Adelved/seismic-flow) repository.
+This project is a fork of [Adelved/seismic-flow](https://github.com/Adelved/seismic-flow) and implements the methodology described in:
+> **Exploring seismic data in the flowline domain** (Adelved et al., The Leading Edge, March 2025)
