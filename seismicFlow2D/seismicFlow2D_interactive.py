@@ -35,7 +35,7 @@ def main():
     print_rich_banner()
     
     # Configuration
-    base_dir = "/home/roderickperez/DataScienceProjects/seismicFlow"
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     segy_path = os.path.join(base_dir, "seismicData/segy/1_Original_Seismics.sgy")
     output_dir = os.path.join(base_dir, "seismicFlow2D/output")
     figures_dir = os.path.join(base_dir, "seismicFlow2D/figures")
@@ -134,11 +134,14 @@ def main():
         sigma = 1.0
         rho = 2.0
         with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as p:
-            task = p.add_task("Calculating Structure Tensor...", total=None)
+            task = p.add_task("Calculating Structure Tensor (CPU)...", total=None)
+            import time
+            start_st = time.time()
             S = structure_tensor_2d(seismic_2d, sigma=sigma, rho=rho)
             _, vector_array = eig_special_2d(S)
+            st_time = time.time() - start_st
             np.save(vector_path, vector_array)
-            p.update(task, description="Structure Tensor Computed!")
+            p.update(task, description=f"Structure Tensor Computed in {st_time:.2f}s!")
     
     if Confirm.ask("Visualize Gradient Structure Tensor & Vector Field?"):
         # Magnitude plot
@@ -169,7 +172,9 @@ def main():
             TimeRemainingColumn(),
             console=console
         ) as p:
-            task = p.add_task("Tracing flowlines...", total=None)
+            task = p.add_task("Tracing flowlines (CPU)...", total=None)
+            import time
+            start_rk = time.time()
             surfaces, _ = extract_surfaces(
                 seismic_2d,
                 vector_array,
@@ -177,7 +182,8 @@ def main():
                 mode=mode,
                 kwargs={"height": None, "distance": None, "prominence": None}
             )
-            p.update(task, description=f"Extracted {len(surfaces)} flowlines!")
+            rk_time = time.time() - start_rk
+            p.update(task, description=f"Extracted {len(surfaces)} flowlines in {rk_time:.2f}s!")
 
         # 7. Visualize Results
         if Confirm.ask("Visualize extraction results?"):

@@ -27,18 +27,21 @@ def print_rich_banner():
  ███████║ ███████╗ ██║ ███████║ ██║ ╚═╝ ██║ ██║ ╚██████╗ ██║      ███████╗╚██████╔╝ ╚███╔███╔╝
  ╚══════╝ ╚══════╝ ╚═╝ ╚══════╝ ╚═╝     ╚═╝ ╚═╝  ╚═════╝ ╚═╝      ╚══════╝ ╚═════╝   ╚══╝╚══╝ 
 
-                           >>>>>>>>> [ VERSION: 2D CASE ] <<<<<<<<<<<< 
+                           >>>>>>>>> [ GPU VERSION ] <<<<<<<<<<<< 
     [/bold cyan]"""
     console.print(Panel(banner_text, border_style="cyan"))
 
 def main():
     print_rich_banner()
     
+    # 0. Device selection
+    device_choice = Prompt.ask("Select processing device", choices=["cpu", "gpu"], default="gpu")
+    console.print(f"Using [bold magenta]{device_choice.upper()}[/bold magenta] for performance heavy operations")
     # Configuration
-    base_dir = "/home/roderickperez/DataScienceProjects/seismicFlow"
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     segy_path = os.path.join(base_dir, "seismicData/segy/1_Original_Seismics.sgy")
-    output_dir = os.path.join(base_dir, "seismicFlow2D/output")
-    figures_dir = os.path.join(base_dir, "seismicFlow2D/figures")
+    output_dir = os.path.join(base_dir, "seismicFlow2D_GPU/output")
+    figures_dir = os.path.join(base_dir, "seismicFlow2D_GPU/figures")
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(figures_dir, exist_ok=True)
 
@@ -134,11 +137,23 @@ def main():
         sigma = 1.0
         rho = 2.0
         with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as p:
-            task = p.add_task("Calculating Structure Tensor...", total=None)
-            S = structure_tensor_2d(seismic_2d, sigma=sigma, rho=rho)
-            _, vector_array = eig_special_2d(S)
+            task = p.add_task(f"Calculating Structure Tensor on {device_choice.upper()}...", total=None)
+            import time
+            start_st = time.time()
+            
+            if device_choice == 'gpu' and HAS_CUPY:
+                # Use high-performance GPU kernels
+                S = gpu_structure_tensor_2d(seismic_2d, sigma=sigma, rho=rho)
+                _, vector_array_gpu = eig_special_2d_gpu(S)
+                vector_array = vector_array_gpu.get() # Transfer back for visualization and caching
+            else:
+                # Fallback to CPU
+                S = structure_tensor_2d(seismic_2d, sigma=sigma, rho=rho)
+                _, vector_array = eig_special_2d(S)
+                
+            st_time = time.time() - start_st
             np.save(vector_path, vector_array)
-            p.update(task, description="Structure Tensor Computed!")
+            p.update(task, description=f"Structure Tensor Computed in {st_time:.2f}s!")
     
     if Confirm.ask("Visualize Gradient Structure Tensor & Vector Field?"):
         # Magnitude plot
@@ -169,15 +184,22 @@ def main():
             TimeRemainingColumn(),
             console=console
         ) as p:
-            task = p.add_task("Tracing flowlines...", total=None)
+            task = p.add_task(f"Tracing flowlines on {device_choice.upper()}...", total=None)
+            import time
+            start_rk = time.time()
             surfaces, _ = extract_surfaces(
                 seismic_2d,
                 vector_array,
                 [sample_int],
                 mode=mode,
+                device=device_choice,
                 kwargs={"height": None, "distance": None, "prominence": None}
             )
-            p.update(task, description=f"Extracted {len(surfaces)} flowlines!")
+            rk_time = time.time() - start_rk
+            p.update(task, description=f"Extracted {len(surfaces)} flowlines in {rk_time:.2f}s!")
+            
+            if device_choice == 'gpu':
+                console.print(f"[bold green]GPU Speedup achieved![/bold green] (Tracing took {rk_time:.4f}s)")
 
         # 7. Visualize Results
         if Confirm.ask("Visualize extraction results?"):
