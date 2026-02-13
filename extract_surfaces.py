@@ -45,7 +45,7 @@ surfaces, _ = extract_surfaces(
 
 
 fig,ax = plt.subplots(1,1,figsize=(20,20))
-ax.imshow(seismic_line,cmap='gray', extent=[0, seismic_line.shape[1], seismic_line.shape[0], 0], alpha=.0)
+ax.imshow(seismic_line,cmap='gray', extent=[0, seismic_line.shape[1], seismic_line.shape[0], 0], alpha=1.0)
 
 #surface objects have a 2D numpy array attribute path (y, x)
 #adjust alpha (0-1) to get overlap effect
@@ -56,4 +56,3 @@ for surface in surfaces:
 os.makedirs('output', exist_ok=True)
 plt.savefig('output/extracted_surfaces.png')
 print(f"Result saved to output/extracted_surfaces.png")
-plt.show()

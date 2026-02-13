@@ -150,16 +150,16 @@ surfaces = generate_surfaces_2D(seismic_line, overlap_threshold=overlap_threshol
 surface_array = surface2array(seismic_line, surfaces)
 
 fig,ax = plt.subplots(1,1,figsize=(20,20))
-ax.imshow(seismic_line,cmap='gray', extent=[0, seismic_line.shape[1], seismic_line.shape[0], 0], alpha=.0)
+# Show seismic line with full opacity
+ax.imshow(seismic_line,cmap='gray', extent=[0, seismic_line.shape[1], seismic_line.shape[0], 0], alpha=1.0)
 
+# Plot generated surfaces on top
 for surface in surfaces:
-    color = 'k'
-    ax.plot(surface.path[:,1], surface.path[:,0], linewidth=1, color = color , alpha = 1)
+    color = 'r' # Use red for better contrast on gray
+    ax.plot(surface.path[:,1], surface.path[:,0], linewidth=1, color = color , alpha = 0.8)
 
 
 # Create output directory if it doesn't exist
 os.makedirs('output', exist_ok=True)
-ax.imshow(surface_array,cmap='gray', extent=[0, seismic_line.shape[1], seismic_line.shape[0], 0])
 plt.savefig('output/generated_surfaces.png')
 print(f"Result saved to output/generated_surfaces.png")
-plt.show()
